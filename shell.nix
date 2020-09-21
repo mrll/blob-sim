@@ -6,7 +6,7 @@ let
 in with pkgs;
 
 mkShell {
-  buildInputs = [ rust alsaLib libGL libudev pkgconfig xlibs.libX11 ];
+  buildInputs = [ alsaLib libGL libudev pkgconfig rust rls xlibs.libX11 ];
 
   APPEND_LIBRARY_PATH = stdenv.lib.makeLibraryPath [
     libGL

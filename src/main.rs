@@ -1,46 +1,115 @@
-use ggez::event::{self, EventHandler};
-use ggez::{graphics, Context, ContextBuilder, GameResult};
+//! blob-sim
+//!
+
+// No Unsafe Code
+#![forbid(unsafe_code)]
+
+// ============================================================================
+// Modules
+// ============================================================================
+
+mod blob;
+
+// ============================================================================
+// Imports
+// ============================================================================
+
+use ggez::*;
+use rand::random;
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+pub const WORLD_WIDTH: f32 = 720.0;
+pub const WORLD_HEIGTH: f32 = 720.0;
+
+// ============================================================================
+// Main
+// ============================================================================
 
 fn main() {
-    // Make a Context.
-    let (mut ctx, mut event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
-        .build()
-        .expect("aieee, could not create ggez context!");
-
-    // Create an instance of your event handler.
-    // Usually, you should provide it with the Context object to
-    // use when setting your game up.
-    let mut my_game = MyGame::new(&mut ctx);
-
-    // Run!
-    match event::run(&mut ctx, &mut event_loop, &mut my_game) {
-        Ok(_) => println!("Exited cleanly."),
-        Err(e) => println!("Error occured: {}", e),
-    }
-}
-
-struct MyGame {
-    // Your state here...
-}
-
-impl MyGame {
-    pub fn new(_ctx: &mut Context) -> MyGame {
-        // Load/create resources such as images here.
-        MyGame {
-		    // ...
-		}
-    }
-}
-
-impl EventHandler for MyGame {
-    fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
-        // Update code here...
-        Ok(())
-    }
-
-    fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx, graphics::WHITE);
-        // Draw code here...
-        graphics::present(ctx)
+    let mut b1 = blob::Blob::default();
+    let mut b2 = blob::Blob::default();
+    println!("{:?}", b1);
+    println!("{:?}", b2);
+    let mut f = vec![
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+        nalgebra::Point2::new(
+            random::<f32>() * WORLD_WIDTH,
+            random::<f32>() * WORLD_HEIGTH,
+        ),
+    ];
+    println!("Starting with food at 12 locations:\n{:#?}", f);
+    println!("Searching...");
+    loop {
+        if b1.energy() >= b1.speed() {
+            let result = b1.search(f.clone());
+            if let Some(result) = result {
+                f.retain(|&x| x != result);
+                println!("B1 found: {:?}", result);
+                println!("Blob 1:   {:?}", b1);
+            }
+        }
+        if b2.energy() >= b2.speed() {
+            let result = b2.search(f.clone());
+            if let Some(result) = result {
+                f.retain(|&x| x != result);
+                println!("B2 found: {:?}", result);
+                println!("Blob 2:   {:?}", b2);
+            }
+        }
+        if f.is_empty() {
+            println!("No more food! Ate everything =)\n{:?}\n{:?}", b1, b2);
+            break;
+        }
+        if b1.energy() < b1.speed() && b2.energy() < b2.speed() {
+            println!("No energy to move! =(\n{:?}\n{:?}", b1, b2);
+            println!("But there's still food\n{:?}", f);
+            break;
+        }
     }
 }

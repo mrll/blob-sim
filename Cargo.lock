@@ -168,6 +168,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "blob-sim"
+version = "0.1.0"
+dependencies = [
+ "ggez",
+ "rand 0.7.3",
+]
+
+[[package]]
 name = "block"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1865,13 +1873,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29e0a6006cf04d568a49363baca3dabddbbe46538f7c76692d405f5f5d140ecd"
 dependencies = [
  "num-traits 0.1.43",
-]
-
-[[package]]
-name = "sim-life"
-version = "0.1.0"
-dependencies = [
- "ggez",
 ]
 
 [[package]]
