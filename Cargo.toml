@@ -1,5 +1,5 @@
 [package]
-name = "blob-sim"
+name = "blob_sim"
 version = "1.0.0"
 authors = ["Matthias Roell <mroell@mrll.de>"]
 edition = "2018"
