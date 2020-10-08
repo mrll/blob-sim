@@ -29,25 +29,25 @@ fn main() -> GameResult {
         .add_resource_path(resource_dir)
         .window_setup(conf::WindowSetup {
             title: env!("CARGO_PKG_NAME").to_owned(),
-            samples: conf::NumSamples::Zero,
+            samples: conf::NumSamples::Four,
             vsync: true,
             icon: "".to_owned(),
             srgb: true,
         })
         .window_mode(conf::WindowMode {
-            width: blob_sim::WORLD_WIDTH,
-            height: blob_sim::WORLD_HEIGHT,
+            width: blob_sim::SCREEN_WIDTH,
+            height: blob_sim::SCREEN_HEIGHT,
             maximized: false,
             fullscreen_type: conf::FullscreenType::Windowed,
             borderless: false,
-            min_width: blob_sim::WORLD_WIDTH,
+            min_width: blob_sim::SCREEN_WIDTH,
             max_width: 0.0,
-            min_height: blob_sim::WORLD_HEIGHT,
+            min_height: blob_sim::SCREEN_HEIGHT,
             max_height: 0.0,
             resizable: true,
         });
     let (ctx, events_loop) = &mut ctx_builder.build().unwrap();
     let sim = &mut blob_sim::Simulation::new(ctx);
-    sim.reset();
+    sim.reset(true);
     event::run(ctx, events_loop, sim)
 }

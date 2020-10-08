@@ -17,10 +17,12 @@ use rand::random;
 // ============================================================================
 
 // Base stats
-const BASE_ENERGY: f32 = 500.0;
+const BASE_ENERGY: f32 = super::WORLD_WIDTH / 3.0;
 const BASE_SPEED: f32 = 1.0;
-const BASE_SENSE: f32 = 1.0;
+const BASE_SENSE: f32 = 5.0 * super::TILE_SIZE;
 const BASE_SIZE: f32 = 1.0;
+
+const FOOD_ENERGY: f32 = BASE_ENERGY / 3.0;
 
 // ============================================================================
 // The Blob
@@ -137,7 +139,7 @@ impl Blob {
         // Go home on low energy and when enough food found
         match self.state() {
             BlobState::SearchFood | BlobState::GoToFood => {
-                if (self.energy() < 150.0 && self.food_found == 1) || self.food_found >= 2 {
+                if (self.energy() < FOOD_ENERGY && self.food_found == 1) || self.food_found >= 2 {
                     // Get distance to next edge on x axis
                     let distance_x = if self.position()[0] > (super::WORLD_WIDTH / 2.0) {
                         self.position()[0] - super::WORLD_WIDTH
@@ -183,6 +185,9 @@ impl Blob {
     }
 
     fn eat(&mut self) {
+        // Get energy from food
+        self.energy = self.energy() + FOOD_ENERGY;
+        // Add collected food
         self.food_found = self.food_found + 1;
     }
 
@@ -232,6 +237,14 @@ impl Blob {
         self.energy = BASE_ENERGY;
         self.state = BlobState::SearchFood;
         self.food_found = 0;
+        self.destination = Point2::new(
+            random::<f32>() * super::WORLD_WIDTH,
+            random::<f32>() * super::WORLD_HEIGHT,
+        );
+        self.position = Point2::new(
+            random::<f32>() * super::WORLD_WIDTH,
+            random::<f32>() * super::WORLD_HEIGHT,
+        );
         // ...and return outcome
         result
     }
