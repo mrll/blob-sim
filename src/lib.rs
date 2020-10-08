@@ -20,25 +20,11 @@ use ggez::{
     nalgebra::{Point2, Translation2},
     timer, Context, GameResult,
 };
+use std::sync::Arc;
 
 // ============================================================================
 // Constants
 // ============================================================================
-
-pub const WORLD_WIDTH: f32 = SCREEN_WIDTH - (2.0 * TILE_SIZE);
-pub const WORLD_HEIGHT: f32 = SCREEN_HEIGHT - (2.0 * TILE_SIZE);
-
-pub const SCREEN_WIDTH: f32 = 1920.0;
-pub const SCREEN_HEIGHT: f32 = 1080.0;
-
-pub const FRAMES_PER_SECOND: f32 = 60.0;
-pub const SECONDS_PER_GENERATION: f32 = 10.0;
-pub const FRAMES_PER_GENERATION: f32 = FRAMES_PER_SECOND * SECONDS_PER_GENERATION;
-pub const PX_MOVEMENT_PER_SECOND: f32 = (WORLD_WIDTH / 2.0) / SECONDS_PER_GENERATION;
-pub const PX_MOVEMENT_PER_FRAME: f32 = PX_MOVEMENT_PER_SECOND / FRAMES_PER_SECOND;
-
-pub const START_BLOB_COUNT: u8 = 8;
-pub const FOOD_PER_TURN: u8 = 100;
 
 pub const TILE_SIZE: f32 = 64.0;
 
@@ -47,13 +33,15 @@ pub const TILE_SIZE: f32 = 64.0;
 // ============================================================================
 
 pub struct Simulation {
-    // Game state
+    // State
     state: SimulationState,
     blobs: Vec<Blob>,
     food: Vec<Point2<f32>>,
     generation_frames: u32,
-    // Game resources
+    // Resources
     res: Resources,
+    // Settings
+    settings: Arc<Settings>,
 }
 
 impl Simulation {
@@ -64,6 +52,7 @@ impl Simulation {
             food: vec![],
             generation_frames: 0,
             res: Resources::new(ctx),
+            settings: Arc::new(Settings::default()),
         }
     }
 
@@ -72,14 +61,14 @@ impl Simulation {
         self.generation_frames = 0;
         if blobs {
             self.blobs = vec![];
-            for _ in 0..START_BLOB_COUNT {
-                self.blobs.push(Blob::new())
+            for _ in 0..self.settings.start_blobs() {
+                self.blobs.push(Blob::new(self.settings.clone()))
             }
         }
-        for _ in 0..FOOD_PER_TURN {
+        for _ in 0..self.settings.food_per_gen() {
             self.food.push(Point2::new(
-                rand::random::<f32>() * WORLD_WIDTH,
-                rand::random::<f32>() * WORLD_HEIGHT,
+                rand::random::<f32>() * self.settings.world_size().0,
+                rand::random::<f32>() * self.settings.world_size().1,
             ))
         }
     }
@@ -91,20 +80,22 @@ impl Simulation {
 
 impl event::EventHandler for Simulation {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        while timer::check_update_time(ctx, FRAMES_PER_SECOND as u32) {
+        while timer::check_update_time(ctx, self.settings.fps()) {
             match self.state {
                 SimulationState::Stopped => {
                     // Do nothing
                 }
                 SimulationState::Running => {
                     self.generation_frames = self.generation_frames + 1;
-                    if self.generation_frames > FRAMES_PER_GENERATION as u32 {
+                    if self.generation_frames > self.settings.fps() * self.settings.gen_duration() {
                         let mut new_blobs = vec![];
                         let mut dead_blobs = vec![];
                         for blob in &mut self.blobs {
                             match blob.next_gen() {
                                 blobs::GenerationResult::Starve => dead_blobs.push(blob.clone()),
-                                blobs::GenerationResult::Reproduce => new_blobs.push(Blob::new()),
+                                blobs::GenerationResult::Reproduce => {
+                                    new_blobs.push(Blob::evolve(blob))
+                                }
                                 blobs::GenerationResult::Live => {
                                     // Nothing happens
                                 }
@@ -131,8 +122,8 @@ impl event::EventHandler for Simulation {
         // Draw World
         self.res.draw_map(
             ctx,
-            (SCREEN_WIDTH / TILE_SIZE).ceil() as usize,
-            (SCREEN_HEIGHT / TILE_SIZE).ceil() as usize,
+            (self.settings.screen_size().0 / TILE_SIZE).ceil() as usize,
+            (self.settings.screen_size().1 / TILE_SIZE).ceil() as usize,
         );
         // Draw Food
         for food in &self.food {
@@ -187,7 +178,104 @@ pub enum SimulationState {
 // Settings
 // ============================================================================
 
-pub struct Settings {}
+#[derive(Clone, PartialEq)]
+pub struct Settings {
+    // Simulation
+    sim_screen: (f32, f32),
+    sim_fps: u32,
+    sim_start_blobs: u32,
+    sim_food_energy: f32,
+    // Generation
+    gen_duration: u32,
+    gen_food: u32,
+    // Blob
+    blob_energy: f32,
+    blob_speed: (f32, f32),
+    blob_sense: (f32, f32),
+    blob_size: (f32, f32),
+}
+
+impl Settings {
+    // Simulation
+    #[inline(always)]
+    pub fn screen_size(&self) -> (f32, f32) {
+        self.sim_screen
+    }
+    #[inline(always)]
+    pub fn world_size(&self) -> (f32, f32) {
+        (
+            self.sim_screen.0 - (2.0 * TILE_SIZE),
+            self.sim_screen.1 - (2.0 * TILE_SIZE),
+        )
+    }
+
+    #[inline(always)]
+    pub fn fps(&self) -> u32 {
+        self.sim_fps
+    }
+
+    #[inline(always)]
+    pub fn start_blobs(&self) -> u32 {
+        self.sim_start_blobs
+    }
+    #[inline(always)]
+    pub fn food_energy(&self) -> f32 {
+        self.sim_food_energy
+    }
+
+    // Generation
+    #[inline(always)]
+    pub fn gen_duration(&self) -> u32 {
+        self.gen_duration
+    }
+    #[inline(always)]
+    pub fn food_per_gen(&self) -> u32 {
+        self.gen_food
+    }
+
+    // Blob
+    #[inline(always)]
+    pub fn blob_energy(&self) -> f32 {
+        self.blob_energy
+    }
+    #[inline(always)]
+    pub fn blob_speed(&self) -> (f32, f32) {
+        self.blob_speed
+    }
+    #[inline(always)]
+    pub fn blob_sense(&self) -> (f32, f32) {
+        self.blob_sense
+    }
+    #[inline(always)]
+    pub fn blob_size(&self) -> (f32, f32) {
+        self.blob_size
+    }
+    #[inline(always)]
+    pub fn blob_step(&self) -> f32 {
+        ((self.world_size().0 / 2.0) / self.gen_duration() as f32) / self.fps() as f32
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Settings {
+        let size = 960.0;
+        Settings {
+            // Simulation
+            sim_screen: (size, size),
+            sim_fps: 60,
+            sim_start_blobs: 8,
+            sim_food_energy: 0.0,
+            // Generation
+            gen_duration: 5,
+            gen_food: 50,
+            // Blob
+            blob_energy: size / 2.0,
+            blob_speed: (1.0, 0.5),
+            blob_sense: (size / 7.5, 0.5),
+            blob_size: (1.0, 0.5),
+        }
+    }
+}
 
 // ============================================================================
 // Resources

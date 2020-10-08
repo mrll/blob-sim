@@ -35,14 +35,14 @@ fn main() -> GameResult {
             srgb: true,
         })
         .window_mode(conf::WindowMode {
-            width: blob_sim::SCREEN_WIDTH,
-            height: blob_sim::SCREEN_HEIGHT,
+            width: blob_sim::Settings::default().screen_size().0,
+            height: blob_sim::Settings::default().screen_size().1,
             maximized: false,
             fullscreen_type: conf::FullscreenType::Windowed,
             borderless: false,
-            min_width: blob_sim::SCREEN_WIDTH,
+            min_width: blob_sim::Settings::default().screen_size().0,
             max_width: 0.0,
-            min_height: blob_sim::SCREEN_HEIGHT,
+            min_height: blob_sim::Settings::default().screen_size().1,
             max_height: 0.0,
             resizable: true,
         });

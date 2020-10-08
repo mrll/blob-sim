@@ -11,24 +11,17 @@
 
 use ggez::nalgebra::{distance, Point2, Translation2};
 use rand::random;
+use std::sync::Arc;
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-// Base stats
-const BASE_ENERGY: f32 = super::WORLD_WIDTH / 3.0;
-const BASE_SPEED: f32 = 1.0;
-const BASE_SENSE: f32 = 5.0 * super::TILE_SIZE;
-const BASE_SIZE: f32 = 1.0;
-
-const FOOD_ENERGY: f32 = BASE_ENERGY / 3.0;
-
 // ============================================================================
 // The Blob
 // ============================================================================
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Blob {
     // Base Stats
     energy: f32,
@@ -42,29 +35,65 @@ pub struct Blob {
     // Map
     destination: Point2<f32>,
     position: Point2<f32>,
+    // Settings
+    settings: Arc<super::Settings>,
 }
 
 impl Blob {
-    pub fn new() -> Blob {
+    pub fn new(settings: Arc<super::Settings>) -> Blob {
         Blob {
             // Base Stats
-            energy: BASE_ENERGY,
-            speed: BASE_SPEED,
-            sense: BASE_SENSE,
-            size: BASE_SIZE,
+            energy: settings.blob_energy(),
+            speed: settings.blob_speed().0,
+            sense: settings.blob_sense().0,
+            size: settings.blob_size().0,
             // State
             state: BlobState::SearchFood,
             // Generation Stats
             food_found: 0,
             // Map
             destination: Point2::new(
-                random::<f32>() * super::WORLD_WIDTH,
-                random::<f32>() * super::WORLD_HEIGHT,
+                random::<f32>() * settings.world_size().0,
+                random::<f32>() * settings.world_size().1,
             ),
             position: Point2::new(
-                random::<f32>() * super::WORLD_WIDTH,
-                random::<f32>() * super::WORLD_HEIGHT,
+                random::<f32>() * settings.world_size().0,
+                random::<f32>() * settings.world_size().1,
             ),
+            // Settings
+            settings,
+        }
+    }
+
+    pub fn evolve(from_blob: &Blob) -> Blob {
+        let size = from_blob.size()
+            * (1.0 + (random::<f32>() * from_blob.settings.blob_size().1)
+                - from_blob.settings.blob_size().1 / 2.0);
+        Blob {
+            // Base Stats
+            energy: from_blob.settings.blob_energy() * size,
+            speed: from_blob.speed()
+                * (1.0 + (random::<f32>() * from_blob.settings.blob_speed().1)
+                    - from_blob.settings.blob_speed().1 / 2.0),
+            sense: from_blob.sense()
+                * (1.0 + (random::<f32>() * from_blob.settings.blob_sense().1)
+                    - from_blob.settings.blob_sense().1 / 2.0),
+            size,
+            // State
+            state: BlobState::SearchFood,
+            // Generation Stats
+            food_found: 0,
+            // Map
+            destination: Point2::new(
+                random::<f32>() * from_blob.settings.world_size().0,
+                random::<f32>() * from_blob.settings.world_size().1,
+            ),
+            position: Point2::new(
+                random::<f32>() * from_blob.settings.world_size().0,
+                random::<f32>() * from_blob.settings.world_size().1,
+            ),
+            // Settings
+            settings: from_blob.settings.clone(),
         }
     }
 }
@@ -105,8 +134,8 @@ impl Blob {
                 } else if self.position() == self.destination() {
                     // Generate random destination
                     self.destination = Point2::new(
-                        random::<f32>() * super::WORLD_WIDTH,
-                        random::<f32>() * super::WORLD_HEIGHT,
+                        random::<f32>() * self.settings.world_size().0,
+                        random::<f32>() * self.settings.world_size().1,
                     );
                 }
                 self.move_to();
@@ -139,16 +168,18 @@ impl Blob {
         // Go home on low energy and when enough food found
         match self.state() {
             BlobState::SearchFood | BlobState::GoToFood => {
-                if (self.energy() < FOOD_ENERGY && self.food_found == 1) || self.food_found >= 2 {
+                if (self.energy() < self.settings.food_energy() * 2.0 && self.food_found == 1)
+                    || self.food_found >= 2
+                {
                     // Get distance to next edge on x axis
-                    let distance_x = if self.position()[0] > (super::WORLD_WIDTH / 2.0) {
-                        self.position()[0] - super::WORLD_WIDTH
+                    let distance_x = if self.position()[0] > (self.settings.world_size().0 / 2.0) {
+                        self.position()[0] - self.settings.world_size().0
                     } else {
                         self.position()[0]
                     };
                     // Get distance to nect edge on y axis
-                    let distance_y = if self.position()[1] > (super::WORLD_HEIGHT / 2.0) {
-                        self.position()[1] - super::WORLD_HEIGHT
+                    let distance_y = if self.position()[1] > (self.settings.world_size().1 / 2.0) {
+                        self.position()[1] - self.settings.world_size().1
                     } else {
                         self.position()[1]
                     };
@@ -186,14 +217,14 @@ impl Blob {
 
     fn eat(&mut self) {
         // Get energy from food
-        self.energy = self.energy() + FOOD_ENERGY;
+        self.energy = self.energy() + self.settings.food_energy();
         // Add collected food
         self.food_found = self.food_found + 1;
     }
 
     fn move_to(&mut self) -> bool {
         // Max move pixel times speed
-        let max_distance = super::PX_MOVEMENT_PER_FRAME * self.speed();
+        let max_distance = self.settings.blob_step() * self.speed();
         // Distance to target
         let distance_to_target = distance(&self.position(), &self.destination());
         // Move either to target if smaller than max possible distance or max_distance
@@ -234,16 +265,16 @@ impl Blob {
             GenerationResult::Starve
         };
         // ...reset self...
-        self.energy = BASE_ENERGY;
+        self.energy = self.settings.blob_energy() * self.size();
         self.state = BlobState::SearchFood;
         self.food_found = 0;
         self.destination = Point2::new(
-            random::<f32>() * super::WORLD_WIDTH,
-            random::<f32>() * super::WORLD_HEIGHT,
+            random::<f32>() * self.settings.world_size().0,
+            random::<f32>() * self.settings.world_size().1,
         );
         self.position = Point2::new(
-            random::<f32>() * super::WORLD_WIDTH,
-            random::<f32>() * super::WORLD_HEIGHT,
+            random::<f32>() * self.settings.world_size().0,
+            random::<f32>() * self.settings.world_size().1,
         );
         // ...and return outcome
         result
